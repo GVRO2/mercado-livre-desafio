@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <name>Hacker Rank</name>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>br.com.gabrieloliveira</groupId>
+    <artifactId>mercadolivre-hackerrank</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>21</java.version>
+        <openapi.generator.version>7.18.0</openapi.generator.version>
+        <jacoco.version>0.8.14</jacoco.version>
+        <pitest.version>1.22.0</pitest.version>
+        <pitest-junit5.version>1.2.3</pitest-junit5.version>
+        <spotless.version>2.43.0</spotless.version>
+        <resilience4j.version>2.3.0</resilience4j.version>
+        <springdoc.version>3.0.1</springdoc.version>
+        <swagger.annotations.version>2.2.41</swagger.annotations.version>
+        <project.base-path>br.com.gabrieloliveira.mercadolivre</project.base-path>
+
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- FIX: Swagger/OpenAPI annotations used by generated code -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>${swagger.annotations.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-ratelimiter</artifactId>
+            <version>${resilience4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testes -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi.generator.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-openapi</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/resources/openapi/openapi.yaml</inputSpec>
+
+                            <generatorName>spring</generatorName>
+
+                            <output>${project.build.directory}/generated-sources/openapi</output>
+
+                            <apiPackage>${project.base-path}.api</apiPackage>
+                            <modelPackage>${project.base-path}.model</modelPackage>
+                            <invokerPackage>${project.base-path}.invoker</invokerPackage>
+
+                            <configOptions>
+                                <interfaceOnly>true</interfaceOnly>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <dateLibrary>java8</dateLibrary>
+                                <useJakartaEe>true</useJakartaEe>
+                                <performBeanValidation>true</performBeanValidation>
+                                <openApiNullable>false</openApiNullable>
+                                <useTags>true</useTags>
+
+                                <documentationProvider>springdoc</documentationProvider>
+
+                                <generateApiTests>true</generateApiTests>
+                                <generateModelTests>true</generateModelTests>
+                            </configOptions>
+
+                            <skipOperationExample>true</skipOperationExample>
+
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>${pitest.version}</version>
+
+            <configuration>
+                <targetClasses>
+                    <param>${project.base-path}.service.*</param>
+                    <param>${project.base-path}.usecase.*</param>
+                    <param>${project.base-path}.domain.*</param>
+                    <param>${project.base-path}.mapper.*</param>
+                </targetClasses>
+
+                <targetTests>
+                    <param>${project.base-path}.*</param>
+                </targetTests>
+
+                <excludedClasses>
+                    <param>${project.base-path}.api.*</param>
+                    <param>${project.base-path}.model.*</param>
+                    <param>${project.base-path}.invoker.*</param>
+
+                    <param>${project.base-path}.config.*</param>
+                    <param>${project.base-path}.Application*</param>
+
+                    <param>${project.base-path}.dto.*</param>
+                </excludedClasses>
+
+                <mutators>
+                    <mutator>DEFAULTS</mutator>
+                </mutators>
+
+                <threads>4</threads>
+                <timeoutConstant>4000</timeoutConstant>
+
+                <outputFormats>
+                    <param>HTML</param>
+                    <param>XML</param>
+                </outputFormats>
+
+                <timestampedReports>false</timestampedReports>
+
+                <mutationThreshold>60</mutationThreshold>
+                <coverageThreshold>70</coverageThreshold>
+
+                <failWhenNoMutations>false</failWhenNoMutations>
+            </configuration>
+
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

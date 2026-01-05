@@ -1,0 +1,736 @@
+openapi: 3.0.3
+
+info:
+  title: Product Comparison API
+  version: 1.0.0
+  description: >
+    Simplified backend API for product comparison. Supports CRUD and a single GET /products
+    that behaves as: (1) list/paged when ids is absent; (2) batch fetch when ids is present.
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Test
+  - url: https://mercadopago.dev.com/api/v1
+    description: Develop environment
+  - url: https://mercadopago.uat.com/api/v1
+    description: Pre-Production environment
+  - url: https://mercadopago.prd-blue.com/api/v1
+    description: Blue Production
+  - url: https://mercadopago.prd.com/api/v1
+    description: Production
+
+tags:
+  - name: Products
+  - name: Comparisons
+  - name: Actuator
+
+paths:
+  /products:
+    get:
+      tags: [Products]
+      summary: List products (paged) OR fetch products by ids (batch)
+      description: >
+        Returns products in two operational modes:
+        1) Batch mode: when the query parameter `ids` is provided (CSV), performs a batch lookup for the specified IDs. Response includes `products` with the items found and `notFound` with IDs that were not located. Batch mode is incompatible with pagination or sorting; requests combining `ids` with `page`, `size`, or `sort` will be treated as invalid and return `400 Bad Request`.
+        2) Paged mode: when `ids` is not provided, returns a paginated list controlled by `page`, `size`, and `sort`, including pagination metadata (`page`, `size`, `totalElements`, `totalPages`).
+        Best practice: do not combine `ids` with `page`, `size`, or `sort`.
+      operationId: getProducts
+      parameters:
+        - name: ids
+          in: query
+          required: false
+          description: Comma-separated product IDs. When present, triggers batch mode.
+          schema:
+            type: string
+            example: "P1,P2,P3"
+
+        - name: page
+          in: query
+          required: false
+          description: Used only when 'ids' is absent (list mode).
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+
+        - name: size
+          in: query
+          required: false
+          description: Used only when 'ids' is absent (list mode).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "name,asc"
+
+        - name: locale
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "pt-BR"
+
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+            example: "BRL"
+
+      responses:
+        "200":
+          description: Success (either list mode or batch mode)
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/XRateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/XRateLimitRemaining"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PagedProductResponse"
+                  - $ref: "#/components/schemas/ProductBatchResponse"
+              examples:
+                listMode:
+                  summary: List mode response (ids absent)
+                  value:
+                    content:
+                      - id: "P1"
+                        name: "Product Name"
+                        imageUrl: "https://cdn.example.com/p/P1.jpg"
+                        description: "Product description"
+                        price: { "amount": 99.9, "currency": "BRL" }
+                        rating: { "average": 4.5, "count": 100 }
+                        specifications: { "storage": "256GB", "ram": "8GB" }
+                    page: 0
+                    size: 20
+                    totalElements: 1
+                    totalPages: 1
+                batchMode:
+                  summary: Batch mode response (ids present)
+                  value:
+                    products:
+                      - id: "P1"
+                        name: "Product Name"
+                        imageUrl: "https://cdn.example.com/p/P1.jpg"
+                        description: "Product description"
+                        price: { "amount": 99.9, "currency": "BRL" }
+                        rating: { "average": 4.5, "count": 100 }
+                        specifications: { "storage": "256GB", "ram": "8GB" }
+                    notFound: ["P999"]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Products]
+      summary: Create a product
+      description: >
+        Create a new product resource. The request body must follow the CreateProductRequest schema. On success the server returns 201 Created with a Location header pointing to the new resource and the created Product in the response body. Validation errors return 400 Bad Request. If a client-supplied ID conflicts with an existing product, the service returns 409 Conflict. Domain validation issues return 422 Unprocessable Entity.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+          headers:
+            Location:
+              description: Resource location
+              schema:
+                type: string
+                example: "/api/v1/products/P1"
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /products/{productId}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      description: >
+        Retrieve a single product by its ID. Returns the Product resource when found (200). Supports conditional requests via the If-None-Match header: when the ETag matches, the server may return 304 Not Modified. If the product does not exist, returns 404 Not Found.
+      operationId: getProductById
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product found
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "304":
+          description: Not modified
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Products]
+      summary: Replace a product
+      description: >
+        Replace an existing product with a full payload (PUT). The request body must conform to UpdateProductRequest. This operation performs a full replacement; missing fields will be cleared according to API semantics. Supports optimistic concurrency using the If-Match header with ETag. Returns 200 with the updated Product on success. Returns 400 for bad input, 404 if the product doesn't exist, 412 for ETag precondition failures, and 422 for domain validation errors.
+      operationId: replaceProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+        - name: If-Match
+          in: header
+          required: false
+          description: Optional optimistic concurrency via ETag
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductRequest"
+      responses:
+        "200":
+          description: Product replaced
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+    patch:
+      tags: [Products]
+      summary: Patch a product
+      description: >
+        Partially update a product (PATCH). Only provided fields are changed; omitted fields remain untouched. Request body must follow PatchProductRequest. Supports If-Match header for optimistic concurrency. Returns 200 with the updated resource on success, 400 for invalid payloads, 404 if the product is not found, 412 for ETag mismatches, and 422 for domain validation errors.
+      operationId: patchProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+        - name: If-Match
+          in: header
+          required: false
+          description: Optional optimistic concurrency via ETag
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchProductRequest"
+      responses:
+        "200":
+          description: Product updated
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+    delete:
+      tags: [Products]
+      summary: Delete a product
+      description: >
+        Delete a product by ID. On successful deletion returns 204 No Content. If the product does not exist, returns 404 Not Found. Deletion is idempotent: deleting an already-deleted/non-existent product still results in 404 according to this API's error semantics.
+      operationId: deleteProduct
+      parameters:
+        - $ref: "#/components/parameters/ProductId"
+      responses:
+        "204":
+          description: Product deleted
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /comparisons:
+    post:
+      tags: [Comparisons]
+      summary: Create a comparison payload
+      description: >
+        Create a comparison payload for a set of products. The request must include at least two product IDs (ComparisonRequest). The response aggregates the requested products and returns a ComparisonResponse that contains the products and a specifications comparison structure. Returns 400 Bad Request for invalid input.
+      operationId: createComparison
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComparisonRequest"
+      responses:
+        "200":
+          description: Comparison created
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/XRequestId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComparisonResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+
+  /actuator:
+    get:
+      tags: [Actuator]
+      summary: Actuator root (links)
+      description: >
+        Returns Actuator root links and available management endpoints. Typically used by tooling and health dashboards to discover actuator endpoints. Response is a JSON object with link relations.
+      operationId: actuatorRoot
+      responses:
+        "200":
+          description: Actuator root links
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /actuator/health:
+    get:
+      tags: [Actuator]
+      summary: Actuator health
+      description: >
+        Returns the overall health status of the application and optional component details. Use this endpoint for monitoring and automated health checks. Response follows Actuator health structure (status and optional components).
+      operationId: actuatorHealth
+      responses:
+        "200":
+          description: Overall health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActuatorHealth"
+
+  /actuator/health/liveness:
+    get:
+      tags: [Actuator]
+      summary: Actuator liveness probe
+      description: >
+        Liveness probe indicating whether the application process is alive. Intended for container orchestration checks. Minimal payload with a status field.
+      operationId: actuatorHealthLiveness
+      responses:
+        "200":
+          description: Liveness status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActuatorHealth"
+
+  /actuator/health/readiness:
+    get:
+      tags: [Actuator]
+      summary: Actuator readiness probe
+      description: >
+        Readiness probe indicating whether the application is ready to serve traffic (e.g., dependencies available). Use this for orchestration and load-balancer decisions.
+      operationId: actuatorHealthReadiness
+      responses:
+        "200":
+          description: Readiness status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActuatorHealth"
+
+  /actuator/info:
+    get:
+      tags: [Actuator]
+      summary: Actuator info
+      description: >
+        Exposes application information such as build, version, or custom info properties. Response is a free-form JSON object.
+      operationId: actuatorInfo
+      responses:
+        "200":
+          description: Application info
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /actuator/metrics:
+    get:
+      tags: [Actuator]
+      summary: Actuator metrics list
+      description: >
+        Returns available metric names produced by the application. Useful for metric discovery and monitoring integrations.
+      operationId: actuatorMetrics
+      responses:
+        "200":
+          description: Metrics names
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /actuator/metrics/{metricName}:
+    get:
+      tags: [Actuator]
+      summary: Actuator metric detail
+      description: >
+        Returns detailed metric data for the specified metric name (e.g., jvm.memory.used). Useful for retrieving metric measurements and metadata. Metric payload is implementation-specific but typically contains measurements and available tags.
+      operationId: actuatorMetricByName
+      parameters:
+        - name: metricName
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "jvm.memory.used"
+      responses:
+        "200":
+          description: Metric details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+components:
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: "P1"
+
+  headers:
+    XRequestId:
+      schema:
+        type: string
+        example: "2a5b12d2-7c3e-4d20-98cb-0e5905f53a25"
+    XRateLimitLimit:
+      schema:
+        type: integer
+        example: 120
+    XRateLimitRemaining:
+      schema:
+        type: integer
+        example: 117
+    ETag:
+      schema:
+        type: string
+        example: "\"prod_P1_v3\""
+
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "P1"
+        name:
+          type: string
+          example: "Product Name"
+        imageUrl:
+          type: string
+          format: uri
+          example: "https://cdn.example.com/p/P1.jpg"
+        description:
+          type: string
+          example: "Product description"
+        price:
+          $ref: "#/components/schemas/Price"
+        rating:
+          $ref: "#/components/schemas/Rating"
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            storage: "256GB"
+            ram: "8GB"
+      required: [id, name, imageUrl, description, price, rating, specifications]
+
+    CreateProductRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Client-provided ID (optional). If omitted, server generates one.
+          example: "P1"
+        name:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        description:
+          type: string
+        price:
+          $ref: "#/components/schemas/Price"
+        rating:
+          $ref: "#/components/schemas/Rating"
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+      required: [name, imageUrl, description, price, rating, specifications]
+
+    UpdateProductRequest:
+      type: object
+      description: Full replacement payload (PUT)
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        description:
+          type: string
+        price:
+          $ref: "#/components/schemas/Price"
+        rating:
+          $ref: "#/components/schemas/Rating"
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+      required: [name, imageUrl, description, price, rating, specifications]
+
+    PatchProductRequest:
+      type: object
+      description: Partial update payload (PATCH). Only provided fields are updated.
+      properties:
+        name:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+        description:
+          type: string
+        price:
+          $ref: "#/components/schemas/Price"
+        rating:
+          $ref: "#/components/schemas/Rating"
+        specifications:
+          type: object
+          additionalProperties:
+            type: string
+
+    Price:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          example: 99.9
+        currency:
+          type: string
+          example: "BRL"
+      required: [amount, currency]
+
+    Rating:
+      type: object
+      properties:
+        average:
+          type: number
+          format: double
+          example: 4.5
+        count:
+          type: integer
+          example: 100
+      required: [average, count]
+
+    ProductBatchResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        notFound:
+          type: array
+          items:
+            type: string
+      required: [products, notFound]
+
+    PagedProductResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        page:
+          type: integer
+          example: 0
+        size:
+          type: integer
+          example: 20
+        totalElements:
+          type: integer
+          example: 200
+        totalPages:
+          type: integer
+          example: 10
+      required: [content, page, size, totalElements, totalPages]
+
+    ComparisonRequest:
+      type: object
+      properties:
+        productIds:
+          type: array
+          minItems: 2
+          maxItems: 20
+          items:
+            type: string
+      required: [productIds]
+
+    ComparisonResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        specifications:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              values:
+                type: object
+                additionalProperties:
+                  type: string
+
+    ApiError:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid request"
+        requestId:
+          type: string
+          example: "2a5b12d2-7c3e-4d20-98cb-0e5905f53a25"
+      required: [code, message]
+
+    ActuatorHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "UP"
+        components:
+          type: object
+          nullable: true
+          additionalProperties: true
+      required: [status]
+
+  responses:
+    BadRequest:
+      description: Invalid request (validation, or conflicting query params)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    Conflict:
+      description: Conflict (e.g., duplicate ID)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    UnprocessableEntity:
+      description: Unprocessable entity (domain validation)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    PreconditionFailed:
+      description: Precondition failed (ETag/If-Match mismatch)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/XRateLimitLimit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/XRateLimitRemaining"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
