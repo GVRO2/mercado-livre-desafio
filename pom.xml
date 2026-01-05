@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.1</version>
+        <version>3.5.9</version>
         <relativePath/>
     </parent>
 
@@ -26,8 +26,9 @@
         <pitest-junit5.version>1.2.3</pitest-junit5.version>
         <spotless.version>2.43.0</spotless.version>
         <resilience4j.version>2.3.0</resilience4j.version>
-        <springdoc.version>3.0.1</springdoc.version>
+        <springdoc.version>2.8.0</springdoc.version>
         <swagger.annotations.version>2.2.41</swagger.annotations.version>
+        <spring.retry.version>2.0.12</spring.retry.version>
         <project.base-path>br.com.gabrieloliveira.mercadolivre</project.base-path>
 
     </properties>
@@ -40,12 +41,40 @@
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- FIX: Swagger/OpenAPI annotations used by generated code -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations-jakarta</artifactId>
             <version>${swagger.annotations.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-ratelimiter</artifactId>
+            <version>${resilience4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -64,23 +93,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-ratelimiter</artifactId>
-            <version>${resilience4j.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
         </dependency>
 
         <!-- Testes -->
@@ -113,32 +125,31 @@
                         </goals>
                         <configuration>
                             <inputSpec>${project.basedir}/src/main/resources/openapi/openapi.yaml</inputSpec>
-
                             <generatorName>spring</generatorName>
-
                             <output>${project.build.directory}/generated-sources/openapi</output>
 
                             <apiPackage>${project.base-path}.api</apiPackage>
                             <modelPackage>${project.base-path}.model</modelPackage>
                             <invokerPackage>${project.base-path}.invoker</invokerPackage>
 
+                            <typeMappings>
+                                <typeMapping>string+currency=Currency</typeMapping>
+                            </typeMappings>
+
+                            <importMappings>
+                                <importMapping>Currency=java.util.Currency</importMapping>
+                            </importMappings>
+
                             <configOptions>
                                 <interfaceOnly>true</interfaceOnly>
                                 <useSpringBoot3>true</useSpringBoot3>
+                                <useJakartaEe>true</useJakartaEe> <useBigDecimal>true</useBigDecimal>
                                 <dateLibrary>java8</dateLibrary>
-                                <useJakartaEe>true</useJakartaEe>
                                 <performBeanValidation>true</performBeanValidation>
                                 <openApiNullable>false</openApiNullable>
                                 <useTags>true</useTags>
-
                                 <documentationProvider>springdoc</documentationProvider>
-
-                                <generateApiTests>true</generateApiTests>
-                                <generateModelTests>true</generateModelTests>
                             </configOptions>
-
-                            <skipOperationExample>true</skipOperationExample>
-
                         </configuration>
                     </execution>
                 </executions>

@@ -8,26 +8,26 @@ info:
     that behaves as: (1) list/paged when ids is absent; (2) batch fetch when ids is present.
 
 servers:
-  - url: http://localhost:8080/api/v1
+  - url: http://localhost:8080
     description: Local Test
-  - url: https://mercadopago.dev.com/api/v1
+  - url: https://mercadopago.dev.com
     description: Develop environment
-  - url: https://mercadopago.uat.com/api/v1
+  - url: https://mercadopago.uat.com
     description: Pre-Production environment
-  - url: https://mercadopago.prd-blue.com/api/v1
+  - url: https://mercadopago.prd-blue.com
     description: Blue Production
-  - url: https://mercadopago.prd.com/api/v1
+  - url: https://mercadopago.prd.com
     description: Production
 
 tags:
-  - name: Products
+  - name: Product
   - name: Comparisons
   - name: Actuator
 
 paths:
-  /products:
+  /api/v1/products:
     get:
-      tags: [Products]
+      tags: [Product]
       summary: List products (paged) OR fetch products by ids (batch)
       description: >
         Returns products in two operational modes:
@@ -42,7 +42,7 @@ paths:
           description: Comma-separated product IDs. When present, triggers batch mode.
           schema:
             type: string
-            example: "P1,P2,P3"
+            example: "3fa85f64-5717-4562-b3fc-2c963f66afa6,9b2c1aa4-9f2e-4f6a-b3d1-3f4c5d6e7a8b"
 
         - name: page
           in: query
@@ -105,7 +105,7 @@ paths:
                   summary: List mode response (ids absent)
                   value:
                     content:
-                      - id: "P1"
+                      - id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                         name: "Product Name"
                         imageUrl: "https://cdn.example.com/p/P1.jpg"
                         description: "Product description"
@@ -120,14 +120,14 @@ paths:
                   summary: Batch mode response (ids present)
                   value:
                     products:
-                      - id: "P1"
+                      - id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                         name: "Product Name"
                         imageUrl: "https://cdn.example.com/p/P1.jpg"
                         description: "Product description"
                         price: { "amount": 99.9, "currency": "BRL" }
                         rating: { "average": 4.5, "count": 100 }
                         specifications: { "storage": "256GB", "ram": "8GB" }
-                    notFound: ["P999"]
+                    notFound: ["550e8400-e29b-41d4-a716-446655440000"]
         "400":
           $ref: "#/components/responses/BadRequest"
         "429":
@@ -136,7 +136,7 @@ paths:
           $ref: "#/components/responses/InternalError"
 
     post:
-      tags: [Products]
+      tags: [Product]
       summary: Create a product
       description: >
         Create a new product resource. The request body must follow the CreateProductRequest schema. On success the server returns 201 Created with a Location header pointing to the new resource and the created Product in the response body. Validation errors return 400 Bad Request. If a client-supplied ID conflicts with an existing product, the service returns 409 Conflict. Domain validation issues return 422 Unprocessable Entity.
@@ -169,9 +169,9 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
 
-  /products/{productId}:
+  /api/v1/products/{productId}:
     get:
-      tags: [Products]
+      tags: [Product]
       summary: Get product by ID
       description: >
         Retrieve a single product by its ID. Returns the Product resource when found (200). Supports conditional requests via the If-None-Match header: when the ETag matches, the server may return 304 Not Modified. If the product does not exist, returns 404 Not Found.
@@ -206,7 +206,7 @@ paths:
           $ref: "#/components/responses/NotFound"
 
     put:
-      tags: [Products]
+      tags: [Product]
       summary: Replace a product
       description: >
         Replace an existing product with a full payload (PUT). The request body must conform to UpdateProductRequest. This operation performs a full replacement; missing fields will be cleared according to API semantics. Supports optimistic concurrency using the If-Match header with ETag. Returns 200 with the updated Product on success. Returns 400 for bad input, 404 if the product doesn't exist, 412 for ETag precondition failures, and 422 for domain validation errors.
@@ -245,7 +245,7 @@ paths:
           $ref: "#/components/responses/UnprocessableEntity"
 
     patch:
-      tags: [Products]
+      tags: [Product]
       summary: Patch a product
       description: >
         Partially update a product (PATCH). Only provided fields are changed; omitted fields remain untouched. Request body must follow PatchProductRequest. Supports If-Match header for optimistic concurrency. Returns 200 with the updated resource on success, 400 for invalid payloads, 404 if the product is not found, 412 for ETag mismatches, and 422 for domain validation errors.
@@ -284,7 +284,7 @@ paths:
           $ref: "#/components/responses/UnprocessableEntity"
 
     delete:
-      tags: [Products]
+      tags: [Product]
       summary: Delete a product
       description: >
         Delete a product by ID. On successful deletion returns 204 No Content. If the product does not exist, returns 404 Not Found. Deletion is idempotent: deleting an already-deleted/non-existent product still results in 404 according to this API's error semantics.
@@ -300,7 +300,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /comparisons:
+  /api/v1/comparisons:
     post:
       tags: [Comparisons]
       summary: Create a comparison payload
@@ -451,7 +451,8 @@ components:
       required: true
       schema:
         type: string
-        example: "P1"
+        format: uuid
+        example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
   headers:
     XRequestId:
@@ -477,7 +478,8 @@ components:
       properties:
         id:
           type: string
-          example: "P1"
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
         name:
           type: string
           example: "Product Name"
@@ -507,7 +509,8 @@ components:
         id:
           type: string
           description: Client-provided ID (optional). If omitted, server generates one.
-          example: "P1"
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
         name:
           type: string
         imageUrl:
@@ -571,12 +574,14 @@ components:
       properties:
         amount:
           type: number
-          format: double
-          example: 99.9
+          format: decimal
+          example: 99.90
+          description: "Monetary amount."
         currency:
-          type: string
+          type: currency
           example: "BRL"
-      required: [amount, currency]
+          pattern: "^[A-Z]{3}$"
+      required: [ amount, currency ]
 
     Rating:
       type: object
@@ -601,6 +606,7 @@ components:
           type: array
           items:
             type: string
+            format: uuid
       required: [products, notFound]
 
     PagedProductResponse:
@@ -633,6 +639,7 @@ components:
           maxItems: 20
           items:
             type: string
+            format: uuid
       required: [productIds]
 
     ComparisonResponse:
