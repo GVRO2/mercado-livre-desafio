@@ -23,11 +23,13 @@ public interface GetProductByIdStrategy {
       },
       maxAttempts = 2,
       backoff = @Backoff(delay = 1000, multiplier = 2))
-  Optional<Product> execute(UUID id, Optional<String> etag);
+  Optional<Product> execute(UUID id);
+
   String name();
 
-   default Optional<Product> recover(Class<?> aclass,TransientDataAccessResourceException ex, UUID id) {
-       String method = String.format("%s.execute(%s)", aclass.getSimpleName(), id);
-       throw new DatabaseConnectException(ex, method);
-    }
+  default Optional<Product> recover(
+      Class<?> aclass, TransientDataAccessResourceException ex, UUID id) {
+    String method = String.format("%s.execute(%s)", aclass.getSimpleName(), id);
+    throw new DatabaseConnectException(ex, method);
+  }
 }

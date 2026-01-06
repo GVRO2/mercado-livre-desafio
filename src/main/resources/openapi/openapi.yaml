@@ -178,17 +178,17 @@ paths:
       operationId: getProductById
       parameters:
         - $ref: "#/components/parameters/ProductId"
-        - name: If-None-Match
+        - name: cache
           in: header
           required: false
+          description: "When true (default), the server may return a cached product if available. Set to false to bypass cache behavior."
           schema:
-            type: string
+            type: boolean
+            default: true
       responses:
         "200":
           description: Product found
           headers:
-            ETag:
-              $ref: "#/components/headers/ETag"
             X-Request-Id:
               $ref: "#/components/headers/XRequestId"
           content:
@@ -460,10 +460,6 @@ components:
       schema:
         type: integer
         example: 117
-    ETag:
-      schema:
-        type: string
-        example: "\"prod_P1_v3\""
 
   schemas:
     Product:
@@ -576,9 +572,9 @@ components:
           example: 99.90
           description: "Monetary amount."
         currency:
-          type: currency
           example: "BRL"
           pattern: "^[A-Z]{3}$"
+          description: "ISO 4217 currency code."
       required: [ amount, currency ]
 
     Rating:

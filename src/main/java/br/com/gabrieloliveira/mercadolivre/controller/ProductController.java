@@ -2,10 +2,9 @@ package br.com.gabrieloliveira.mercadolivre.controller;
 
 import br.com.gabrieloliveira.mercadolivre.api.ProductApi;
 import br.com.gabrieloliveira.mercadolivre.model.*;
+import br.com.gabrieloliveira.mercadolivre.usecase.product.impl.GetProductByIdHandler;
 import java.util.Optional;
 import java.util.UUID;
-
-import br.com.gabrieloliveira.mercadolivre.usecase.product.impl.GetProductByIdHandler;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,12 +16,9 @@ public class ProductController implements ProductApi {
   private final GetProductByIdHandler getProductByIdHandler;
 
   @Override
-  public ResponseEntity<Product> getProductById(UUID productId, Optional<String> ifNoneMatch) {
-    Optional<Product> product = getProductByIdHandler.execute(productId, ifNoneMatch);
-    if (product.isPresent()) {
-      return ResponseEntity.ok(product.get());
-    }
-    return ResponseEntity.notFound().build();
+  public ResponseEntity<Product> getProductById(UUID productId, Optional<Boolean> cache) {
+    Optional<Product> product = getProductByIdHandler.execute(productId, cache);
+      return product.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   //  @Override

@@ -2,13 +2,11 @@ package br.com.gabrieloliveira.mercadolivre.usecase.product.impl;
 
 import br.com.gabrieloliveira.mercadolivre.model.Product;
 import br.com.gabrieloliveira.mercadolivre.repository.ProductRepository;
-import br.com.gabrieloliveira.mercadolivre.usecase.BuildEtag;
 import br.com.gabrieloliveira.mercadolivre.usecase.product.GetProductByIdStrategy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.TransientDataAccessResourceException;
@@ -21,15 +19,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class GetProductByIdStrategyDb implements GetProductByIdStrategy {
 
-     private final ProductRepository productRepository;
-     private final StringRedisTemplate redis;
-     private final ObjectMapper mapper;
-     private final BuildEtag buildEtag;
+  private final ProductRepository productRepository;
+  private final StringRedisTemplate redis;
+  private final ObjectMapper mapper;
 
   @Override
-  public Optional<Product> execute(UUID id, Optional<String> etag) {
+  public Optional<Product> execute(UUID id) {
     Optional<Product> product = productRepository.findById(id);
-    product.ifPresent(value -> putInRedis(buildEtag.execute(value), value));
+    product.ifPresent(value -> putInRedis(id.toString(), value));
     return product;
   }
 
