@@ -174,7 +174,7 @@ paths:
       tags: [Product]
       summary: Get product by ID
       description: >
-        Retrieve a single product by its ID. Returns the Product resource when found (200). Supports conditional requests via the If-None-Match header: when the ETag matches, the server may return 304 Not Modified. If the product does not exist, returns 404 Not Found.
+        Retrieve a single product by its ID. Returns the Product resource when found (200). Supports conditional requests via the If-None-Match header: when the ETag matches, the server return product in cache, If the product does not exist, returns 404 Not Found.
       operationId: getProductById
       parameters:
         - $ref: "#/components/parameters/ProductId"
@@ -195,13 +195,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Product"
-        "304":
-          description: Not modified
-          headers:
-            ETag:
-              $ref: "#/components/headers/ETag"
-            X-Request-Id:
-              $ref: "#/components/headers/XRequestId"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -501,7 +494,12 @@ components:
           example:
             storage: "256GB"
             ram: "8GB"
-      required: [id, name, imageUrl, description, price, rating, specifications]
+        lastUpdated:
+          type: string
+          format: date-time
+          description: "Server-managed timestamp. Set by the service on create/update. Read-only."
+
+      required: [id, name, imageUrl, description, price, rating, specifications, lastUpdated]
 
     CreateProductRequest:
       type: object

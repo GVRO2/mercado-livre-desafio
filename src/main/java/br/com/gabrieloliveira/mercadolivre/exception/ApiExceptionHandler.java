@@ -20,7 +20,8 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(BusinessException.class)
   public ResponseEntity<ApiError> handleBusinessException(BusinessException ex, Locale locale) {
-    String message = messageSource.getMessage(ex.getMessageKey(), ex.getArgs(), ex.getMessageKey(), locale);
+    String message =
+        messageSource.getMessage(ex.getMessageKey(), ex.getArgs(), ex.getMessageKey(), locale);
     log.error("{} | {}: {}", ex.getHttpStatus(), ex.getMessageKey(), message, ex);
     return ResponseEntity.status(ex.getHttpStatus())
         .body(new ApiError(ex.getMessageKey(), message));
