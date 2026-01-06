@@ -197,6 +197,8 @@ paths:
                 $ref: "#/components/schemas/Product"
         "404":
           $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
     put:
       tags: [Product]
@@ -660,13 +662,10 @@ components:
       properties:
         code:
           type: string
-          example: "VALIDATION_ERROR"
+          example: "invalid.uuid.format"
         message:
           type: string
-          example: "Invalid request"
-        requestId:
-          type: string
-          example: "2a5b12d2-7c3e-4d20-98cb-0e5905f53a25"
+          example: "The provided UUID is not in a valid format. Please ensure it follows the standard UUID structure."
       required: [code, message]
 
     ActuatorHealth:
@@ -691,10 +690,6 @@ components:
 
     NotFound:
       description: Resource not found
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ApiError"
 
     Conflict:
       description: Conflict (e.g., duplicate ID)

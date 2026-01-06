@@ -25,11 +25,12 @@ public class GetProductByIdHandler {
 
     if (cache.isPresent() && cache.get()) {
       Optional<Product> fromRedis = strategies.get("redis").execute(id);
+      log.info("Fetching product {} from Redis cache: {}", id, fromRedis.isPresent());
       if (fromRedis.isPresent()) {
         return fromRedis;
       }
     }
-
+    log.info("Fetching product {} from Database", id);
     return strategies.get("db").execute(id);
   }
 }
